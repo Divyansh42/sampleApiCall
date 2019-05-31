@@ -13,7 +13,10 @@ import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AbsListView;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +28,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.github.ybq.android.spinkit.SpinKitView;
 import com.jss.sampleapicall.Adapters.MoviesAdapter;
 import com.jss.sampleapicall.Models.Movie;
 import com.jss.sampleapicall.Models.MyDividerItemDecoration;
@@ -41,9 +45,17 @@ public class MainActivity extends AppCompatActivity {
     private Context context;
     private static final String TAG = MainActivity.class.getSimpleName();
     private RecyclerView recyclerView;
+    LinearLayoutManager mLayoutManager;
     private List<Movie> movieList;
     private MoviesAdapter moviesAdapter;
     private SearchView searchView;
+    private Boolean isScrolling = false;
+    int currentItems, totalItems, scrollOutItems;
+    ProgressBar progressBar;
+    int pageCount = 1;
+    String queryTitle;
+    int noOfPages;
+    TextView defaultTv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,26 +69,59 @@ public class MainActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.rv_movies);
         movieList = new ArrayList<>();
         moviesAdapter = new MoviesAdapter(this, movieList);
+        progressBar = findViewById(R.id.progressBar);
+        defaultTv = findViewById(R.id.defaut_tv);
 
-        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
+        mLayoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.addItemDecoration(new MyDividerItemDecoration(this, DividerItemDecoration.VERTICAL, 36));
         recyclerView.setAdapter(moviesAdapter);
-        loadMovieData("inception");
+       // loadMovieData("inception");
+
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if(newState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL)
+                {
+                    isScrolling = true;
+                }
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                currentItems = mLayoutManager.getChildCount();
+                totalItems = mLayoutManager.getItemCount();
+                scrollOutItems = mLayoutManager.findFirstVisibleItemPosition();
+
+                if(isScrolling && (currentItems + scrollOutItems == totalItems) && pageCount < noOfPages)
+                {
+                    isScrolling = false;
+                    pageCount++;
+                    loadMovieData(queryTitle, pageCount);
+                }
+            }
+        });
     }
 
 
 
-    private void loadMovieData(String queryTitle) {
+    private void loadMovieData(String queryTitle, int pageCount) {
         StringBuilder urlSb = new StringBuilder("http://www.omdbapi.com/?s=");
         urlSb.append(queryTitle);
         urlSb.append("&apikey=3429523f");
+        urlSb.append("&page=");
+        urlSb.append(pageCount);
+        progressBar.setVisibility(View.VISIBLE);
+        defaultTv.setVisibility(View.GONE);
         StringRequest stringRequest = new StringRequest(Request.Method.GET, urlSb.toString(),
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
                         try {
+                            progressBar.setVisibility(View.GONE);
                             JSONObject jsonObject = new JSONObject(response);
                             JSONArray jsonArray = jsonObject.getJSONArray("Search");
                             for(int i = 0; i < jsonArray.length(); i++) {
@@ -93,6 +138,13 @@ public class MainActivity extends AppCompatActivity {
 
                                 movieList.add(movie);
                             }
+
+                            int totalResults = Integer.parseInt(jsonObject.getString("totalResults"));
+                            if(totalResults % 10 == 0){
+                                noOfPages = totalResults/10;
+                            } else
+                                noOfPages = totalResults/10 + 1;
+
 
                             moviesAdapter.notifyDataSetChanged();
 
@@ -132,15 +184,19 @@ public class MainActivity extends AppCompatActivity {
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
+                queryTitle = query;
+                pageCount = 1;
                 movieList.clear();
-                loadMovieData(query);
+                loadMovieData(query, pageCount);
                 return false;
             }
 
             @Override
             public boolean onQueryTextChange(String query) {
+                queryTitle = query;
+                pageCount = 1;
                 movieList.clear();
-                loadMovieData(query);
+                loadMovieData(query, pageCount);
                 return false;
             }
         });

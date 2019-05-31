@@ -8,6 +8,15 @@
     android:layout_marginTop="54dp"
     tools:showIn="@layout/activity_main">
 
+    <TextView
+        android:id="@+id/defaut_tv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Search for the movie title in search box."
+        android:maxLines="2"
+        android:layout_centerInParent="true"
+        android:textSize="18sp"/>
+
     <android.support.v7.widget.RecyclerView
         android:id="@+id/rv_movies"
         android:layout_width="match_parent"
@@ -17,7 +26,9 @@
     <ProgressBar
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:visibility="invisible"
         android:id="@+id/progressBar"/>
 
 </RelativeLayout>
